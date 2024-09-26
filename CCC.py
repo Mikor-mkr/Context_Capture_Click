@@ -1,7 +1,9 @@
 import sys
 
 import os
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QCheckBox
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QCheckBox, QLabel
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPixmap
 from pyproj import Transformer
 
 class SimpleGUI(QWidget):
@@ -12,9 +14,23 @@ class SimpleGUI(QWidget):
 
     def initUI(self):
         layout = QVBoxLayout()
+        # make a dark grey background
+        self.setStyleSheet("background-color: #aaacad;")
         # SET width to 400
         self.setFixedWidth(400)
-        #         # check box for z-values
+
+        # add the Map-Greece-Logo_white.png file image to the bottom right side
+        # of the GUI
+
+        # Add the Map-Greece-Logo_white.png file image to the bottom right side of the GUI
+        logo_path = os.path.join(os.path.dirname(__file__), 'Map-Greece-Logo_white.png')
+        logo_label = QLabel(self)
+        pixmap = QPixmap(logo_path)
+        pixmap = pixmap.scaled(50, 50, Qt.KeepAspectRatio, Qt.SmoothTransformation)  # Resize the image
+        logo_label.setPixmap(pixmap)
+        logo_label.setAlignment(Qt.AlignRight | Qt.AlignBottom)
+        #layout.addWidget(logo_label, alignment=Qt.AlignRight | Qt.AlignBottom)
+
         self.no_z_Values = QCheckBox('no Z-values', self)
         self.no_z_Values.setChecked(False)
 
@@ -31,7 +47,13 @@ class SimpleGUI(QWidget):
         layout.addWidget(self.convertAutoCADbutton)
         layout.addWidget(self.streetViewbutton)
 
-        layout.addWidget(self.no_z_Values)
+        # Create a horizontal layout for the checkbox and logo
+        h_layout = QHBoxLayout()
+        h_layout.addWidget(self.no_z_Values)
+        h_layout.addWidget(logo_label, alignment=Qt.AlignRight | Qt.AlignBottom)
+        
+        # Add the horizontal layout to the main vertical layout
+        layout.addLayout(h_layout)
 
         self.setLayout(layout)
         self.setWindowTitle('Simple PyQt5 GUI')
