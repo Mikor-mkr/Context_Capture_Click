@@ -58,7 +58,6 @@ class SimpleGUI(QWidget):
         layout.addLayout(h_layout)
 
         self.setLayout(layout)
-        self.setWindowTitle('Simple PyQt5 GUI')
         self.show()
 
     def convertXYZ(self):
