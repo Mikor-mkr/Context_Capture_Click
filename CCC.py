@@ -14,7 +14,9 @@ class SimpleGUI(QWidget):
 
     def initUI(self):
         layout = QVBoxLayout()
-        # make a dark grey background
+        # rename the window to 'Simple PyQt5 GUI'
+        self.setWindowTitle('Context Capture Click - CCC')
+
         self.setStyleSheet("background-color: #aaacad;")
         # SET width to 400
         self.setFixedWidth(400)
