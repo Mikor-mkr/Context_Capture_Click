@@ -16,18 +16,20 @@ import pygetwindow
 
 # OCR Functions from ocr_test.py
 def copy_coords_from_window(window_name):
+    print(window_name)
     win = pywinctl.getWindowsWithTitle(window_name)
     if not win:
         return None
     
     win = win[0]
     win.activate()
-    #time.sleep(0.3)  # Allow time for the window to activate
+    time.sleep(0.1)  # Allow time for the window to activate
     pyautogui.hotkey('ctrl', 'a')
     pyautogui.hotkey('ctrl', 'c')
-    #time.sleep(0.3)  # Allow time for clipboard to update
+    time.sleep(0.1)  # Allow time for clipboard to update
     test = pyperclip.paste()
     coords = extract_coordinates(test)
+    print(test)
     return coords
 
 # Coordinate extraction from clipboard text (from CCC.py)
@@ -74,14 +76,16 @@ class KeyboardMonitorThread(QThread):
         """Extract coordinates when F1 is pressed"""
         self.status_update.emit("Capturing screenshot...")
         
+        
         try:
             coords = copy_coords_from_window(self.window_name)
+            print(coords)
             if coords:
                 x, y, z = coords
                 self.status_update.emit(f"Extracted coordinates: ({x}, {y}, {z})")
                 self.coordinates_captured.emit((str(x), str(y), str(z)))
             else:
-                self.status_update.emit("Failed to extract coordinates from screenshot")
+                self.status_update.emit("Failed to extract coordinates.")
         except Exception as e:
             self.status_update.emit(f"Error: {e} at line {sys.exc_info()[-1].tb_lineno}")
     

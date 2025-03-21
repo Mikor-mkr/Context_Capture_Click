@@ -4,4 +4,4 @@ build/
 /dist
 dist/
 
-.spec
+*.spec
