@@ -10,50 +10,28 @@ from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPu
 
 import keyboard
 import pywinctl
-import pyperclip
 import pyautogui
-import pygetwindow
 
-# OCR Functions from ocr_test.py
 def copy_coords_from_window(window_name):
-    print(window_name)
-    win = pywinctl.getWindowsWithTitle(window_name)
-    if not win:
+    try:
+        win = pywinctl.getWindowsWithTitle(window_name)
+        if not win:
+            return None
+        
+        win = win[0]  # First matching window
+        win.activate()
+        time.sleep(0.1)  # Allow time for the window to activate
+        print("Window activated")
+        pyautogui.hotkey('ctrl', 'a')
+        pyautogui.hotkey('ctrl', 'c')
+        time.sleep(0.1)  # Allow time for clipboard to update
+        return 1
+    except Exception as e:
+        print(f"Error: {e}")
         return None
-    
-    win = win[0]
-    win.activate()
-    time.sleep(0.1)  # Allow time for the window to activate
-    pyautogui.hotkey('ctrl', 'a')
-    pyautogui.hotkey('ctrl', 'c')
-    time.sleep(0.1)  # Allow time for clipboard to update
-    test = pyperclip.paste()
-    coords = extract_coordinates(test)
-    print(test)
-    return coords
-
-# Coordinate extraction from clipboard text (from CCC.py)
-def extract_coordinates(text):
-    """
-    Extracts coordinates from clipboard text in the format "Position: X Y Zm".
-    """
-    pattern = r"Position:\s*(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)m"
-    match = re.search(pattern, text)
-    if match:
-        x, y, z = match.groups()
-        
-        # Validate that X has 6 integer digits and Y has 7 integer digits
-        x_int_digits = len(str(int(float(x))))
-        y_int_digits = len(str(int(float(y))))
-        
-        if x_int_digits == 6 and y_int_digits == 7:
-            return x, y, z            
-    return None
-
 
 # Keyboard Hotkey Monitor Thread (new for F1 functionality)
 class KeyboardMonitorThread(QThread):
-    status_update = pyqtSignal(str)
     coordinates_captured = pyqtSignal(tuple)
     
     def __init__(self, window_name="Measurements"):
@@ -63,7 +41,6 @@ class KeyboardMonitorThread(QThread):
         
     def run(self):
         self.running = True
-        self.status_update.emit("F1 hotkey activated - Press F1 to capture coordinates from screen")
         
         # Register hotkey
         keyboard.add_hotkey('f1', self.capture_and_process)
@@ -73,38 +50,28 @@ class KeyboardMonitorThread(QThread):
             time.sleep(0.1)
             
     def capture_and_process(self):
-        """Extract coordinates when F1 is pressed"""
-        self.status_update.emit("Capturing screenshot...")
-        
-        
         try:
-            coords = copy_coords_from_window(self.window_name)
-            print(coords)
-            if coords:
-                x, y, z = coords
-                self.status_update.emit(f"Extracted coordinates: ({x}, {y}, {z})")
-                self.coordinates_captured.emit((str(x), str(y), str(z)))
-            else:
-                self.status_update.emit("Failed to extract coordinates.")
+            # Capture screenshot of the window
+            copy_coords_from_window(self.window_name)
         except Exception as e:
-            self.status_update.emit(f"Error: {e} at line {sys.exc_info()[-1].tb_lineno}")
+            print(f"Error capturing coordinates: {e}")
+
     
     def stop(self):
         self.running = False
-        keyboard.unhook_all()  # Remove all hotkey bindings
+        keyboard.unhook_all()  # Remove all hotkey bindings   
+
 
 # Main GUI Class
 class SimpleGUI(QWidget):
     def __init__(self):
         super().__init__()
         self.coordinates = None
-        self.monitoring = False
-        self.last_clipboard = ""
         self.initUI()
+        
         
         # Initialize keyboard monitor thread for F1 hotkey
         self.keyboard_thread = KeyboardMonitorThread()
-        self.keyboard_thread.status_update.connect(self.update_status)
         self.keyboard_thread.coordinates_captured.connect(self.process_captured_coordinates)
         
     def get_resource_path(self, relative_path):
@@ -118,7 +85,7 @@ class SimpleGUI(QWidget):
     def initUI(self):
         layout = QVBoxLayout()
         # rename the window to 'Simple PyQt5 GUI'
-        self.setWindowTitle('Context Capture Click - CCC with OCR')
+        self.setWindowTitle('Context Capture Click')
         self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
 
 
@@ -140,6 +107,7 @@ class SimpleGUI(QWidget):
 
         self.no_z_Values = QCheckBox('no Z-values', self)
         self.no_z_Values.setChecked(False)
+
         
         # New button for F1 OCR capture functionality
         self.ocrCaptureButton = QPushButton('Enable F1 OCR Capture', self)
@@ -155,14 +123,8 @@ class SimpleGUI(QWidget):
 
         self.streetViewbutton = QPushButton('Street View', self)
         self.streetViewbutton.clicked.connect(self.streetView)
-
-        # Status label
-        self.status_label = QLabel("Idle - Click 'Start Monitoring' to begin")
-        self.status_label.setAlignment(Qt.AlignCenter)
-        
         
         layout.addWidget(self.ocrCaptureButton)  # Add the new OCR button
-        layout.addWidget(self.status_label)
 
         layout.addWidget(self.convertAutoCADbutton)
         layout.addWidget(self.convertXYZbutton)
@@ -198,11 +160,9 @@ class SimpleGUI(QWidget):
             
             # Create a new thread for next time
             self.keyboard_thread = KeyboardMonitorThread()
-            self.keyboard_thread.status_update.connect(self.update_status)
             self.keyboard_thread.coordinates_captured.connect(self.process_captured_coordinates)
 
     def process_captured_coordinates(self, coords):
-        """Process coordinates captured via OCR"""
         if coords:
             x, y, z = coords
             
@@ -217,33 +177,6 @@ class SimpleGUI(QWidget):
             self.coordinates = [x, y, z]
             self.updateStreetViewButtonState()
             
-            # Send coordinates to progeCAD
-            try:
-                # Locate and activate the progeCAD window
-                progecad_windows = pygetwindow.getWindowsWithTitle("progeCAD")
-                if not progecad_windows:
-                    self.update_status("progeCAD window not found.")
-                    return
-                    
-                progecad_window = progecad_windows[0]
-                if progecad_window.isMinimized:
-                    progecad_window.restore()
-                progecad_window.activate()
-                #time.sleep(0.3)
-                
-                # Check if no_z_Values is checked and adjust command accordingly
-                if self.no_z_Values.isChecked():
-                    # Only send X and Y coordinates
-                    pyautogui.typewrite(f"_POINT {x},{y}")
-                    self.update_status(f"Point created at ({x}, {y}) - Z omitted")
-                else:
-                    # Send all three coordinates
-                    pyautogui.typewrite(f"_POINT {x},{y},{z}")
-                    self.update_status(f"Point created at ({x}, {y}, {z})")
-                    
-                pyautogui.press("enter")
-            except Exception as e:
-                self.update_status(f"Error: {e}")
 
     def convertXYZ(self):
         clipboard = QApplication.clipboard()
@@ -288,7 +221,6 @@ class SimpleGUI(QWidget):
         self.updateStreetViewButtonState()
         result = 'PO ' + ','.join(clipboard_values) + '\n'
         clipboard.setText(result)
-
                 
     def update_status(self, status):
         self.status_label.setText(status)
@@ -304,9 +236,6 @@ class SimpleGUI(QWidget):
                 # Convert from Greek grid (EPSG:2100) to WGS84 (EPSG:4326)
                 transformer = Transformer.from_crs("EPSG:2100", "EPSG:4326")
                 wgs84_coordinates = []
-                #x, y, z = map(float, coordinates)
-                print(f"Coordinates: {coordinates}")  # Debugging statement
-                print(f"Coordinates[0]: {coordinates[0]}")  # Debugging statement
                 lat, lon = transformer.transform(float(coordinates[0]), float(coordinates[1]))
                 wgs84_coordinates.append((lat, lon,))
                 print(f"WGS84 Coordinates: {wgs84_coordinates}")  # Debugging statement
@@ -315,7 +244,6 @@ class SimpleGUI(QWidget):
                 if wgs84_coordinates:
                     lat, lon = wgs84_coordinates[0][:2]
                     url = f"https://www.google.com/maps/@?api=1&map_action=pano&viewpoint={lat},{lon}"
-                    print(f"Opening URL: {url}")  # Debugging statement
                     import webbrowser
                     webbrowser.open(url)
         except Exception as e:
