@@ -3,10 +3,9 @@ import os
 import sys
 import time
 
-import numpy as np
 from pyproj import Transformer
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QCheckBox, QLabel
 
 import keyboard
@@ -14,8 +13,6 @@ import pywinctl
 import pyperclip
 import pyautogui
 import pygetwindow
-
-
 
 # OCR Functions from ocr_test.py
 def copy_coords_from_window(window_name):
@@ -48,8 +45,7 @@ def extract_coordinates(text):
         y_int_digits = len(str(int(float(y))))
         
         if x_int_digits == 6 and y_int_digits == 7:
-            return x, y, z
-            
+            return x, y, z            
     return None
 
 
